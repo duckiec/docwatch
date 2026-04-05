@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocWatch</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1f2630;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --red: #f85149;
+      --amber: #d29922;
+      --blue: #58a6ff;
+      --border: #30363d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top right, #101825, var(--bg) 40%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .left { min-width: 0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
+    }
+
+    .metric-title {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .feed-header {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    input, select, button {
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 8px 10px;
+    }
+
+    button { cursor: pointer; }
+
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .crash-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .crash-card:hover {
+      transform: translateY(-1px);
+      border-color: #4b5563;
+    }
+
+    .crash-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .container-name {
+      font-family: Consolas, "Courier New", monospace;
+      font-weight: 700;
+      color: #a5d6ff;
+    }
+
+    .timestamp {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .summary {
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      border: 1px solid transparent;
+      font-weight: 700;
+    }
+
+    .badge-oom, .badge-exit137 { background: rgba(248,81,73,0.15); color: #ffb4ae; border-color: rgba(248,81,73,0.45); }
+    .badge-exit1, .badge-configerror { background: rgba(210,153,34,0.16); color: #ffd58a; border-color: rgba(210,153,34,0.45); }
+    .badge-network { background: rgba(88,166,255,0.16); color: #b9dcff; border-color: rgba(88,166,255,0.45); }
+    .badge-cleanexit { background: rgba(63,185,80,0.15); color: #9de5a8; border-color: rgba(63,185,80,0.45); }
+    .badge-unknown { background: rgba(139,148,158,0.2); color: #d0d7de; border-color: rgba(139,148,158,0.45); }
+
+    .logs {
+      margin-top: 10px;
+      max-height: 260px;
+      overflow: auto;
+      background: #0b0f14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    .logs.open { display: block; }
+
+    .sidebar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      height: fit-content;
+      position: sticky;
+      top: 16px;
+    }
+
+    .container-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .dot-running { background: var(--green); }
+    .dot-stopped { background: var(--red); }
+
+    .mono {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .error {
+      background: rgba(248,81,73,0.15);
+      color: #ffb4ae;
+      border: 1px solid rgba(248,81,73,0.45);
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="left">
+      <div id="dockerError" class="error"></div>
+
+      <section class="stats">
+        <div class="card">
+          <div class="metric-title">Crashes Today</div>
+          <div id="crashesToday" class="metric-value">0</div>
+        </div>
+        <div class="card">
+          <div class="metric-title">Most Affected Container</div>
+          <div id="topContainer" class="metric-value">-</div>
+        </div>
+        <div class="card">
+          <div class="metric-title">Last Crash Time</div>
+          <div id="lastCrash" class="metric-value" style="font-size:16px;">-</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="feed-header">
+          <input id="containerFilter" placeholder="Filter by container name" />
+          <select id="typeFilter">
+            <option value="">All crash types</option>
+            <option>OOM</option>
+            <option>Exit 1</option>
+            <option>Exit 137</option>
+            <option>Config error</option>
+            <option>Network</option>
+            <option>Clean exit</option>
+            <option>Unknown</option>
+          </select>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+        <div id="crashFeed" class="feed"></div>
+      </section>
+    </div>
+
+    <aside class="sidebar">
+      <h3 style="margin: 6px 0 8px 0;">Live Containers</h3>
+      <div id="containersList"></div>
+    </aside>
+  </div>
+
+  <script>
+    const state = {
+      crashes: [],
+      crashDetails: new Map(),
+    };
+
+    const feed = document.getElementById('crashFeed');
+    const containersList = document.getElementById('containersList');
+    const dockerError = document.getElementById('dockerError');
+
+    function badgeClass(type) {
+      const key = (type || 'unknown').toLowerCase().replace(/\s+/g, '');
+      if (key === 'oom') return 'badge badge-oom';
+      if (key === 'exit1') return 'badge badge-exit1';
+      if (key === 'exit137') return 'badge badge-exit137';
+      if (key === 'configerror') return 'badge badge-configerror';
+      if (key === 'network') return 'badge badge-network';
+      if (key === 'cleanexit') return 'badge badge-cleanexit';
+      return 'badge badge-unknown';
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('stats endpoint returned ' + res.status);
+        const data = await res.json();
+
+        document.getElementById('crashesToday').textContent = data.crashes_today ?? 0;
+        document.getElementById('topContainer').textContent = data.most_affected_container || '-';
+        document.getElementById('lastCrash').textContent = data.last_crash_time ? new Date(data.last_crash_time).toLocaleString() : '-';
+
+        if (data.docker_error) {
+          dockerError.style.display = 'block';
+          dockerError.textContent = data.docker_error;
+        } else {
+          dockerError.style.display = 'none';
+        }
+      } catch (err) {
+        dockerError.style.display = 'block';
+        dockerError.textContent = 'Failed to load stats: ' + err;
+      }
+    }
+
+    async function fetchCrashes() {
+      const container = document.getElementById('containerFilter').value.trim();
+      const type = document.getElementById('typeFilter').value.trim();
+
+      const params = new URLSearchParams();
+      if (container) params.set('container', container);
+      if (type) params.set('type', type);
+
+      try {
+        const res = await fetch('/api/crashes?' + params.toString());
+        if (!res.ok) throw new Error('crashes endpoint returned ' + res.status);
+        state.crashes = await res.json();
+        renderCrashes();
+      } catch (err) {
+        feed.innerHTML = '<div class="card" style="color:#ffb4ae;">Failed to load crashes.</div>';
+      }
+    }
+
+    function renderCrashes() {
+      feed.innerHTML = '';
+      if (!state.crashes.length) {
+        feed.innerHTML = '<div class="card">No crashes found.</div>';
+        return;
+      }
+
+      state.crashes.forEach((crash) => {
+        const card = document.createElement('div');
+        card.className = 'crash-card';
+
+        const crashType = crash.crash_type || 'Unknown';
+        if (crashType === 'OOM' || crashType === 'Exit 137') {
+          card.style.borderLeftColor = 'var(--red)';
+        } else if (crashType === 'Exit 1' || crashType === 'Config error') {
+          card.style.borderLeftColor = 'var(--amber)';
+        } else if (crashType === 'Network') {
+          card.style.borderLeftColor = 'var(--blue)';
+        } else {
+          card.style.borderLeftColor = '#5b6470';
+        }
+
+        const top = document.createElement('div');
+        top.className = 'crash-top';
+
+        const left = document.createElement('div');
+        const name = document.createElement('div');
+        name.className = 'container-name';
+        name.textContent = crash.container_name || 'unknown';
+        const ts = document.createElement('div');
+        ts.className = 'timestamp';
+        ts.textContent = crash.timestamp ? new Date(crash.timestamp).toLocaleString() : '-';
+        left.appendChild(name);
+        left.appendChild(ts);
+
+        const badge = document.createElement('span');
+        badge.className = badgeClass(crashType);
+        badge.textContent = crashType;
+
+        top.appendChild(left);
+        top.appendChild(badge);
+
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.textContent = crash.ai_summary || 'AI summary unavailable';
+
+        const logs = document.createElement('pre');
+        logs.id = `logs-${crash.id}`;
+        logs.className = 'logs';
+        logs.textContent = 'Loading logs...';
+
+        card.appendChild(top);
+        card.appendChild(summary);
+        card.appendChild(logs);
+
+        card.addEventListener('click', async () => {
+          const logsEl = card.querySelector(`#logs-${crash.id}`);
+          if (!logsEl.classList.contains('open')) {
+            if (!state.crashDetails.has(crash.id)) {
+              try {
+                const detailRes = await fetch(`/api/crashes/${crash.id}`);
+                if (!detailRes.ok) throw new Error('detail endpoint returned ' + detailRes.status);
+                const detail = await detailRes.json();
+                state.crashDetails.set(crash.id, detail);
+              } catch (err) {
+                logsEl.textContent = 'Failed to load logs.';
+              }
+            }
+            const detail = state.crashDetails.get(crash.id);
+            if (detail) {
+              logsEl.textContent = detail.raw_logs || '(no logs available)';
+            }
+          }
+          logsEl.classList.toggle('open');
+        });
+
+        feed.appendChild(card);
+      });
+    }
+
+    async function fetchContainers() {
+      try {
+        const res = await fetch('/api/containers');
+        if (!res.ok) throw new Error('containers endpoint returned ' + res.status);
+        const data = await res.json();
+
+        containersList.innerHTML = '';
+        if (data.error) {
+          dockerError.style.display = 'block';
+          dockerError.textContent = data.error;
+        }
+
+        (data.containers || []).forEach((container) => {
+          const row = document.createElement('div');
+          row.className = 'container-row';
+          const running = container.status === 'running';
+          row.innerHTML = `
+            <div class="mono"><span class="dot ${running ? 'dot-running' : 'dot-stopped'}"></span>${container.name}</div>
+            <div class="mono">${container.restart_count} restarts</div>
+          `;
+          containersList.appendChild(row);
+        });
+
+        if (!(data.containers || []).length) {
+          containersList.innerHTML = '<div class="mono" style="color: var(--muted);">No containers found.</div>';
+        }
+      } catch (err) {
+        containersList.innerHTML = '<div class="mono" style="color: #ffb4ae;">Failed to load containers.</div>';
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      fetchStats();
+      fetchCrashes();
+      fetchContainers();
+    });
+
+    document.getElementById('containerFilter').addEventListener('input', fetchCrashes);
+    document.getElementById('typeFilter').addEventListener('change', fetchCrashes);
+
+    fetchStats();
+    fetchCrashes();
+    fetchContainers();
+
+    setInterval(fetchStats, 30000);
+    setInterval(fetchContainers, 15000);
+    setInterval(fetchCrashes, 30000);
+  </script>
+</body>
+</html>
