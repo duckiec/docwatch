@@ -5,19 +5,19 @@ DocWatch monitors Docker containers, records crash events, classifies failures, 
 ## Quick Start
 
 1. Copy `.env.example` to `.env`.
-2. Start the stack:
-
-```bash
-docker-compose up --build
-```
-
-3. Open `http://localhost:8080`.
-
-If you want to use the published image instead of building locally:
+2. Pull the published image and start the stack:
 
 ```bash
 docker compose pull
 docker compose up -d
+```
+
+3. Open `http://localhost:8080`.
+
+Optional: build locally instead of using the published image.
+
+```bash
+docker compose up --build
 ```
 
 ## Published Image
@@ -32,7 +32,7 @@ docker run ghcr.io/duckiec/docwatch:latest
 
 The default published image used by this repo is `ghcr.io/duckiec/docwatch:latest`.
 
-The compose file also points at that image by default, so a pull-and-run path is available without rebuilding.
+The compose file points at that image by default, so a pull-and-run path is available without rebuilding.
 
 ## What It Tracks
 
