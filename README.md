@@ -13,6 +13,18 @@ docker-compose up --build
 
 3. Open `http://localhost:8080`.
 
+## Published Image
+
+This repo now includes a GitHub Actions workflow that builds and publishes a Docker image to GHCR on pushes to `main` and version tags.
+
+Example:
+
+```bash
+docker run ghcr.io/<owner>/docwatch:latest
+```
+
+Replace `<owner>` with the GitHub account or organization that owns the repo.
+
 ## What It Tracks
 
 - container status changes (`running` -> `exited`)
@@ -56,6 +68,8 @@ docker-compose up --build
 - Per-container error isolation in poll loop
 - Graceful fallback summaries when AI providers fail
 - Clear UI error states when Docker socket is not available
+- Docker image includes a native `HEALTHCHECK` against `/api/health`
+- The Docker build includes a `test` stage that runs the smoke tests before publish
 
 ## Environment Variables
 
@@ -74,3 +88,4 @@ See `.env.example` for full list. Common settings:
 - The app requires Docker socket access to inspect sibling containers.
 - If Docker access fails, the dashboard remains available and shows the error.
 - If notification or AI credentials are missing, monitoring still runs.
+- If you want to publish under a different GHCR package name, update the workflow image name in `.github/workflows/docker-publish.yml`.
