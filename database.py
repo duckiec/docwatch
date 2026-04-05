@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import AsyncGenerator
 
 import aiosqlite
 
@@ -21,11 +23,12 @@ def _ensure_db_dir() -> None:
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
 
-async def _connect() -> aiosqlite.Connection:
-    db = await aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT_SECONDS)
-    await db.execute("PRAGMA journal_mode=WAL;")
-    await db.execute("PRAGMA busy_timeout=5000;")
-    return db
+@asynccontextmanager
+async def _connect() -> AsyncGenerator[aiosqlite.Connection, None]:
+    async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT_SECONDS) as db:
+        await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA busy_timeout=5000;")
+        yield db
 
 
 async def _execute_with_retry(fn):
@@ -43,7 +46,7 @@ async def _execute_with_retry(fn):
 
 async def init_db() -> None:
     _ensure_db_dir()
-    async with await _connect() as db:
+    async with _connect() as db:
         await db.execute(
             """
             CREATE TABLE IF NOT EXISTS crashes (
@@ -71,16 +74,16 @@ async def init_db() -> None:
             );
             """
         )
-                await db.execute(
-                        """
-                        CREATE TABLE IF NOT EXISTS muted_containers (
-                            container_name TEXT PRIMARY KEY,
-                            muted_until TEXT,
-                            reason TEXT,
-                            updated_at TEXT
-                        );
-                        """
-                )
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS muted_containers (
+                container_name TEXT PRIMARY KEY,
+                muted_until TEXT,
+                reason TEXT,
+                updated_at TEXT
+            );
+            """
+        )
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_timestamp ON crashes(timestamp DESC);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_container ON crashes(container_name);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_type ON crashes(crash_type);")
@@ -88,7 +91,7 @@ async def init_db() -> None:
 
 
 async def get_container_state(container_id: str) -> dict | None:
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """
@@ -109,7 +112,7 @@ async def upsert_container_state(
     last_status: str,
 ) -> None:
     async def _op() -> None:
-        async with await _connect() as db:
+        async with _connect() as db:
             await db.execute(
                 """
                 INSERT INTO container_state (
@@ -130,7 +133,7 @@ async def upsert_container_state(
 
 async def insert_crash(record: dict) -> int:
     async def _op() -> int:
-        async with await _connect() as db:
+        async with _connect() as db:
             cursor = await db.execute(
                 """
                 INSERT INTO crashes (
@@ -187,7 +190,7 @@ async def list_crashes(
     params.append(safe_limit)
     params.append(safe_offset)
 
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(query, params)
         rows = await cursor.fetchall()
@@ -195,7 +198,7 @@ async def list_crashes(
 
 
 async def get_crash(crash_id: int) -> dict | None:
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """
@@ -212,7 +215,7 @@ async def get_crash(crash_id: int) -> dict | None:
 
 async def delete_crash(crash_id: int) -> bool:
     async def _op() -> bool:
-        async with await _connect() as db:
+        async with _connect() as db:
             cursor = await db.execute("DELETE FROM crashes WHERE id = ?", (crash_id,))
             await db.commit()
             return cursor.rowcount > 0
@@ -237,7 +240,7 @@ async def delete_crashes(container: str | None = None, crash_type: str | None = 
         query += " WHERE " + " AND ".join(clauses)
 
     async def _op() -> int:
-        async with await _connect() as db:
+        async with _connect() as db:
             cursor = await db.execute(query, params)
             await db.commit()
             return int(cursor.rowcount or 0)
@@ -253,7 +256,7 @@ async def delete_old_crashes(older_than_days: int) -> int:
     params = (f"-{older_than_days} days",)
 
     async def _op() -> int:
-        async with await _connect() as db:
+        async with _connect() as db:
             cursor = await db.execute(query, params)
             await db.commit()
             return int(cursor.rowcount or 0)
@@ -263,7 +266,7 @@ async def delete_old_crashes(older_than_days: int) -> int:
 
 async def get_crash_type_counts(limit: int = 10) -> list[dict]:
     safe_limit = max(1, min(int(limit), 50))
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """
@@ -281,7 +284,7 @@ async def get_crash_type_counts(limit: int = 10) -> list[dict]:
 
 async def get_timeline(hours: int = 24) -> list[dict]:
     safe_hours = max(1, min(int(hours), 168))
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """
@@ -299,7 +302,7 @@ async def get_timeline(hours: int = 24) -> list[dict]:
 
 async def get_crashes_for_export(limit: int = 5000) -> list[dict]:
     safe_limit = max(1, min(int(limit), 20000))
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """
@@ -317,7 +320,7 @@ async def get_crashes_for_export(limit: int = 5000) -> list[dict]:
 
 async def set_container_mute(container_name: str, muted_until: str, reason: str | None = None) -> None:
     async def _op() -> None:
-        async with await _connect() as db:
+        async with _connect() as db:
             await db.execute(
                 """
                 INSERT INTO muted_containers (container_name, muted_until, reason, updated_at)
@@ -336,7 +339,7 @@ async def set_container_mute(container_name: str, muted_until: str, reason: str 
 
 async def clear_container_mute(container_name: str) -> bool:
     async def _op() -> bool:
-        async with await _connect() as db:
+        async with _connect() as db:
             cursor = await db.execute(
                 "DELETE FROM muted_containers WHERE container_name = ?",
                 (container_name,),
@@ -348,7 +351,7 @@ async def clear_container_mute(container_name: str) -> bool:
 
 
 async def list_container_mutes() -> list[dict]:
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """
@@ -363,7 +366,7 @@ async def list_container_mutes() -> list[dict]:
 
 
 async def is_container_muted(container_name: str) -> bool:
-    async with await _connect() as db:
+    async with _connect() as db:
         cursor = await db.execute(
             """
             SELECT 1
@@ -380,7 +383,7 @@ async def is_container_muted(container_name: str) -> bool:
 
 async def get_stats() -> dict:
     today = datetime.now().date().isoformat()
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
 
         total_today_cur = await db.execute(
