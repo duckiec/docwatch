@@ -8,10 +8,11 @@ from datetime import datetime, timedelta, timezone
 
 import docker
 from fastapi import FastAPI, HTTPException, Query
+from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 
 import database
 import watcher
@@ -19,6 +20,24 @@ from notifier import send_notifications
 
 app = FastAPI(title="DocWatch")
 templates = Jinja2Templates(directory="templates")
+API_AUTH_TOKEN = os.getenv("API_AUTH_TOKEN", "").strip()
+
+
+@app.middleware("http")
+async def api_token_middleware(request: Request, call_next):
+    if not API_AUTH_TOKEN:
+        return await call_next(request)
+
+    path = request.url.path
+    # Keep health endpoint available for container HEALTHCHECK even when auth is enabled.
+    if not path.startswith("/api") or path == "/api/health":
+        return await call_next(request)
+
+    provided = request.headers.get("X-API-Token", "").strip()
+    if provided != API_AUTH_TOKEN:
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+
+    return await call_next(request)
 
 
 @app.on_event("startup")

@@ -58,6 +58,8 @@ The compose file points at that image by default, so a pull-and-run path is avai
 
 ## API Endpoints
 
+When `API_AUTH_TOKEN` is set, include `X-API-Token: <token>` on all `/api/*` calls except `/api/health`.
+
 - `GET /api/crashes?container=&type=&limit=&offset=&acknowledged=` list crashes (pagination + review filter)
 - `GET /api/crashes/{id}` crash details with full logs
 - `DELETE /api/crashes/{id}` delete one crash
