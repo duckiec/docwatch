@@ -20,20 +20,6 @@ Optional: build locally instead of using the published image.
 docker compose up --build
 ```
 
-## Published Image
-
-This repo now includes a GitHub Actions workflow that builds and publishes a Docker image to GHCR on pushes to `main` and version tags.
-
-Example:
-
-```bash
-docker run ghcr.io/duckiec/docwatch:latest
-```
-
-The default published image used by this repo is `ghcr.io/duckiec/docwatch:latest`.
-
-The compose file points at that image by default, so a pull-and-run path is available without rebuilding.
-
 ## What It Tracks
 
 - container status changes (`running` -> `exited`)
