@@ -143,9 +143,9 @@ async def insert_crash(record: dict) -> int:
             cursor = await db.execute(
                 """
                 INSERT INTO crashes (
-                  container_name, container_id, timestamp, exit_code, restart_count,
-                   uptime_seconds, crash_type, ai_summary, raw_logs, acknowledged_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    container_name, container_id, timestamp, exit_code, restart_count,
+                    uptime_seconds, crash_type, ai_summary, raw_logs, acknowledged_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record.get("container_name"),
@@ -157,7 +157,7 @@ async def insert_crash(record: dict) -> int:
                     record.get("crash_type"),
                     record.get("ai_summary"),
                     record.get("raw_logs"),
-                    record.get("acknowledged_at"),
+                    None,
                 ),
             )
             await db.commit()
