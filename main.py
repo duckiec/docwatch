@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import docker
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
@@ -39,8 +42,9 @@ async def api_crashes(
     container: str | None = Query(default=None),
     type: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ):
-    crashes = await database.list_crashes(limit=limit, container=container, crash_type=type)
+    crashes = await database.list_crashes(limit=limit, offset=offset, container=container, crash_type=type)
     return crashes
 
 
@@ -112,9 +116,84 @@ async def api_crash_types(limit: int = Query(default=10, ge=1, le=50)):
     return await database.get_crash_type_counts(limit=limit)
 
 
+@app.get("/api/timeline")
+async def api_timeline(hours: int = Query(default=24, ge=1, le=168)):
+    return await database.get_timeline(hours=hours)
+
+
 @app.post("/api/refresh")
 async def api_refresh():
     return await watcher.trigger_poll_now()
+
+
+@app.get("/api/crashes/export.csv")
+async def api_export_crashes_csv(limit: int = Query(default=5000, ge=1, le=20000)):
+    rows = await database.get_crashes_for_export(limit=limit)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "container_name",
+            "container_id",
+            "timestamp",
+            "exit_code",
+            "restart_count",
+            "uptime_seconds",
+            "crash_type",
+            "ai_summary",
+            "raw_logs",
+        ]
+    )
+    for row in rows:
+        writer.writerow(
+            [
+                row.get("id"),
+                row.get("container_name"),
+                row.get("container_id"),
+                row.get("timestamp"),
+                row.get("exit_code"),
+                row.get("restart_count"),
+                row.get("uptime_seconds"),
+                row.get("crash_type"),
+                row.get("ai_summary"),
+                row.get("raw_logs"),
+            ]
+        )
+
+    csv_bytes = io.BytesIO(output.getvalue().encode("utf-8"))
+    filename = f"docwatch-crashes-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.csv"
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    return StreamingResponse(csv_bytes, media_type="text/csv", headers=headers)
+
+
+@app.get("/api/muted-containers")
+async def api_list_muted_containers():
+    return await database.list_container_mutes()
+
+
+@app.post("/api/muted-containers")
+async def api_set_muted_container(
+    container_name: str = Query(..., min_length=1),
+    minutes: int = Query(default=60, ge=5, le=10080),
+    reason: str | None = Query(default=None),
+):
+    muted_until = (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
+    await database.set_container_mute(container_name=container_name, muted_until=muted_until, reason=reason)
+    return {
+        "ok": True,
+        "container_name": container_name,
+        "muted_until": muted_until,
+        "reason": reason,
+    }
+
+
+@app.delete("/api/muted-containers")
+async def api_clear_muted_container(container_name: str = Query(..., min_length=1)):
+    removed = await database.clear_container_mute(container_name)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Mute rule not found")
+    return {"ok": True}
 
 
 @app.post("/api/test-notify")

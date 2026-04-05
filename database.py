@@ -71,6 +71,16 @@ async def init_db() -> None:
             );
             """
         )
+                await db.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS muted_containers (
+                            container_name TEXT PRIMARY KEY,
+                            muted_until TEXT,
+                            reason TEXT,
+                            updated_at TEXT
+                        );
+                        """
+                )
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_timestamp ON crashes(timestamp DESC);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_container ON crashes(container_name);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_type ON crashes(crash_type);")
@@ -148,10 +158,12 @@ async def insert_crash(record: dict) -> int:
 
 async def list_crashes(
     limit: int = 50,
+    offset: int = 0,
     container: str | None = None,
     crash_type: str | None = None,
 ) -> list[dict]:
     safe_limit = max(1, min(int(limit), 200))
+    safe_offset = max(0, int(offset))
     query = """
         SELECT id, container_name, container_id, timestamp, exit_code, restart_count,
                uptime_seconds, crash_type, ai_summary
@@ -171,8 +183,9 @@ async def list_crashes(
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
 
-    query += " ORDER BY datetime(timestamp) DESC LIMIT ?"
+    query += " ORDER BY datetime(timestamp) DESC LIMIT ? OFFSET ?"
     params.append(safe_limit)
+    params.append(safe_offset)
 
     async with await _connect() as db:
         db.row_factory = aiosqlite.Row
@@ -264,6 +277,105 @@ async def get_crash_type_counts(limit: int = 10) -> list[dict]:
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
+
+
+async def get_timeline(hours: int = 24) -> list[dict]:
+    safe_hours = max(1, min(int(hours), 168))
+    async with await _connect() as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """
+            SELECT strftime('%Y-%m-%dT%H:00:00Z', timestamp) AS bucket, COUNT(*) AS count
+            FROM crashes
+            WHERE julianday(timestamp) >= julianday('now', ?)
+            GROUP BY bucket
+            ORDER BY bucket ASC
+            """,
+            (f"-{safe_hours} hours",),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def get_crashes_for_export(limit: int = 5000) -> list[dict]:
+    safe_limit = max(1, min(int(limit), 20000))
+    async with await _connect() as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """
+            SELECT id, container_name, container_id, timestamp, exit_code,
+                   restart_count, uptime_seconds, crash_type, ai_summary, raw_logs
+            FROM crashes
+            ORDER BY datetime(timestamp) DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def set_container_mute(container_name: str, muted_until: str, reason: str | None = None) -> None:
+    async def _op() -> None:
+        async with await _connect() as db:
+            await db.execute(
+                """
+                INSERT INTO muted_containers (container_name, muted_until, reason, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(container_name) DO UPDATE SET
+                  muted_until=excluded.muted_until,
+                  reason=excluded.reason,
+                  updated_at=excluded.updated_at
+                """,
+                (container_name, muted_until, reason, _utc_now_iso()),
+            )
+            await db.commit()
+
+    await _execute_with_retry(_op)
+
+
+async def clear_container_mute(container_name: str) -> bool:
+    async def _op() -> bool:
+        async with await _connect() as db:
+            cursor = await db.execute(
+                "DELETE FROM muted_containers WHERE container_name = ?",
+                (container_name,),
+            )
+            await db.commit()
+            return bool(cursor.rowcount)
+
+    return await _execute_with_retry(_op)
+
+
+async def list_container_mutes() -> list[dict]:
+    async with await _connect() as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """
+            SELECT container_name, muted_until, reason, updated_at
+            FROM muted_containers
+            WHERE julianday(muted_until) > julianday('now')
+            ORDER BY muted_until ASC
+            """
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def is_container_muted(container_name: str) -> bool:
+    async with await _connect() as db:
+        cursor = await db.execute(
+            """
+            SELECT 1
+            FROM muted_containers
+            WHERE container_name = ?
+              AND julianday(muted_until) > julianday('now')
+            LIMIT 1
+            """,
+            (container_name,),
+        )
+        row = await cursor.fetchone()
+        return bool(row)
 
 
 async def get_stats() -> dict:

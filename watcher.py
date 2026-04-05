@@ -183,7 +183,9 @@ async def poll_docker() -> None:
                 }
 
                 await database.insert_crash(crash_record)
-                await send_crash_notification(crash_record)
+                muted = await database.is_container_muted(container_name)
+                if not muted:
+                    await send_crash_notification(crash_record)
 
             await database.upsert_container_state(container_id, container_name, restart_count, status)
         except Exception:
