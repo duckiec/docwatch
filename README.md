@@ -44,6 +44,8 @@ docker compose up --build
 
 ## API Endpoints
 
+When `API_AUTH_TOKEN` is set, include `X-API-Token: <token>` on all `/api/*` calls except `/api/health`.
+
 - `GET /api/crashes?container=&type=&limit=&offset=&acknowledged=` list crashes (pagination + review filter)
 - `GET /api/crashes/{id}` crash details with full logs
 - `DELETE /api/crashes/{id}` delete one crash
@@ -86,10 +88,13 @@ See `.env.example` for full list. Common settings:
 - `NTFY_URL=https://ntfy.sh`
 - `NTFY_TOPIC=`
 - `WEBHOOK_URL=`
+- `API_AUTH_TOKEN=`
 
 ## Notes for Deployment
 
 - The app requires Docker socket access to inspect sibling containers.
+- Mounting `/var/run/docker.sock` effectively grants high control over the host Docker daemon; only run this on trusted hosts/networks.
+- Set `API_AUTH_TOKEN` in production to avoid exposing all API routes publicly.
 - If Docker access fails, the dashboard remains available and shows the error.
 - If notification or AI credentials are missing, monitoring still runs.
 - If you want to publish under a different GHCR package name, update the workflow image name in `.github/workflows/docker-publish.yml`.
