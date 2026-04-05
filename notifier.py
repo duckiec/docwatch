@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import smtplib
 from email.mime.text import MIMEText
 
+import httpx
 from telegram import Bot
 
 
@@ -55,15 +57,71 @@ async def send_email_message(subject: str, message: str) -> bool:
     return await asyncio.to_thread(_send_email_sync, subject, message)
 
 
+async def send_ntfy_message(subject: str, message: str) -> bool:
+    base_url = os.getenv("NTFY_URL", "https://ntfy.sh").strip().rstrip("/")
+    topic = os.getenv("NTFY_TOPIC", "").strip()
+    if not topic:
+        return False
+
+    username = os.getenv("NTFY_USERNAME", "").strip()
+    password = os.getenv("NTFY_PASSWORD", "").strip()
+    priority = os.getenv("NTFY_PRIORITY", "3").strip()
+
+    headers = {
+        "Title": subject,
+        "Priority": priority,
+    }
+
+    auth = None
+    if username and password:
+        auth = (username, password)
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(f"{base_url}/{topic}", content=message.encode("utf-8"), headers=headers, auth=auth)
+            return response.status_code < 400
+    except Exception:
+        return False
+
+
+async def send_webhook_message(subject: str, message: str) -> bool:
+    webhook_url = os.getenv("WEBHOOK_URL", "").strip()
+    if not webhook_url:
+        return False
+
+    secret = os.getenv("WEBHOOK_SECRET", "").strip()
+    timeout = float(os.getenv("WEBHOOK_TIMEOUT_SECONDS", "15"))
+
+    payload = {
+        "title": subject,
+        "message": message,
+    }
+
+    headers = {"Content-Type": "application/json"}
+    if secret:
+        headers["Authorization"] = f"Bearer {secret}"
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(webhook_url, content=json.dumps(payload).encode("utf-8"), headers=headers)
+            return response.status_code < 400
+    except Exception:
+        return False
+
+
 async def send_notifications(subject: str, message: str) -> dict:
-    telegram_res, email_res = await asyncio.gather(
+    telegram_res, email_res, ntfy_res, webhook_res = await asyncio.gather(
         send_telegram_message(message),
         send_email_message(subject, message),
+        send_ntfy_message(subject, message),
+        send_webhook_message(subject, message),
         return_exceptions=True,
     )
     telegram_ok = bool(telegram_res) if not isinstance(telegram_res, Exception) else False
     email_ok = bool(email_res) if not isinstance(email_res, Exception) else False
-    return {"telegram": telegram_ok, "email": email_ok}
+    ntfy_ok = bool(ntfy_res) if not isinstance(ntfy_res, Exception) else False
+    webhook_ok = bool(webhook_res) if not isinstance(webhook_res, Exception) else False
+    return {"telegram": telegram_ok, "email": email_ok, "ntfy": ntfy_ok, "webhook": webhook_ok}
 
 
 async def send_crash_notification(crash: dict) -> dict:

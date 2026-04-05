@@ -13,6 +13,13 @@ docker-compose up --build
 
 3. Open `http://localhost:8080`.
 
+If you want to use the published image instead of building locally:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
 ## Published Image
 
 This repo now includes a GitHub Actions workflow that builds and publishes a Docker image to GHCR on pushes to `main` and version tags.
@@ -22,6 +29,10 @@ Example:
 ```bash
 docker run ghcr.io/duckiec/docwatch:latest
 ```
+
+The default published image used by this repo is `ghcr.io/duckiec/docwatch:latest`.
+
+The compose file also points at that image by default, so a pull-and-run path is available without rebuilding.
 
 ## What It Tracks
 
@@ -38,14 +49,20 @@ docker run ghcr.io/duckiec/docwatch:latest
 - CSV export for incident history (`GET /api/export/crashes.csv`)
 - Bulk crash deletion with optional filters (`DELETE /api/crashes?container=...&type=...`)
 - Notification mute rules per container (`GET/POST/DELETE /api/muted-containers`)
+- Acknowledge/unacknowledge crashes without deleting them (`POST /api/crashes/{id}/acknowledge`)
+- Incident cards now support acknowledge/unacknowledge actions in the dashboard.
+- Filter incidents by acknowledgement state with `GET /api/crashes?acknowledged=true|false`.
+- Notification delivery can fan out to Telegram, email, ntfy, and an optional webhook.
 - Automatic retention cleanup (`CRASH_RETENTION_DAYS`)
 - Health status endpoint (`GET /api/health`)
 
 ## API Endpoints
 
-- `GET /api/crashes?container=&type=&limit=&offset=` list crashes (pagination)
+- `GET /api/crashes?container=&type=&limit=&offset=&acknowledged=` list crashes (pagination + review filter)
 - `GET /api/crashes/{id}` crash details with full logs
 - `DELETE /api/crashes/{id}` delete one crash
+- `POST /api/crashes/{id}/acknowledge` mark a crash reviewed
+- `POST /api/crashes/{id}/unacknowledge` mark a crash active again
 - `DELETE /api/crashes?container=&type=` delete filtered crashes
 - `GET /api/containers` list live containers
 - `GET /api/stats` top-level dashboard stats
@@ -55,7 +72,7 @@ docker run ghcr.io/duckiec/docwatch:latest
 - `GET /api/muted-containers` list active mute rules
 - `POST /api/muted-containers?container_name=&minutes=&reason=` add/update mute rule
 - `DELETE /api/muted-containers?container_name=` remove mute rule
-- `POST /api/test-notify` send test Telegram/email notification
+- `POST /api/test-notify` send test notification to every configured channel
 - `POST /api/refresh` run poll loop immediately
 - `GET /api/health` app and watcher status
 
@@ -80,6 +97,9 @@ See `.env.example` for full list. Common settings:
 - `DB_TIMEOUT_SECONDS=10`
 - `DB_LOCK_RETRY_COUNT=3`
 - `DB_LOCK_RETRY_DELAY_SECONDS=0.15`
+- `NTFY_URL=https://ntfy.sh`
+- `NTFY_TOPIC=`
+- `WEBHOOK_URL=`
 
 ## Notes for Deployment
 

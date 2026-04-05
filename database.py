@@ -59,7 +59,8 @@ async def init_db() -> None:
               uptime_seconds INTEGER,
               crash_type TEXT,
               ai_summary TEXT,
-              raw_logs TEXT
+                            raw_logs TEXT,
+                            acknowledged_at TEXT
             );
             """
         )
@@ -87,6 +88,11 @@ async def init_db() -> None:
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_timestamp ON crashes(timestamp DESC);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_container ON crashes(container_name);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_type ON crashes(crash_type);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_crashes_acknowledged ON crashes(acknowledged_at);")
+        try:
+            await db.execute("ALTER TABLE crashes ADD COLUMN acknowledged_at TEXT;")
+        except aiosqlite.OperationalError:
+            pass
         await db.commit()
 
 
@@ -138,7 +144,7 @@ async def insert_crash(record: dict) -> int:
                 """
                 INSERT INTO crashes (
                   container_name, container_id, timestamp, exit_code, restart_count,
-                  uptime_seconds, crash_type, ai_summary, raw_logs
+                   uptime_seconds, crash_type, ai_summary, raw_logs, acknowledged_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
@@ -169,7 +175,7 @@ async def list_crashes(
     safe_offset = max(0, int(offset))
     query = """
         SELECT id, container_name, container_id, timestamp, exit_code, restart_count,
-               uptime_seconds, crash_type, ai_summary
+               uptime_seconds, crash_type, ai_summary, acknowledged_at
         FROM crashes
     """
     clauses = []
@@ -203,7 +209,7 @@ async def get_crash(crash_id: int) -> dict | None:
         cursor = await db.execute(
             """
             SELECT id, container_name, container_id, timestamp, exit_code, restart_count,
-                   uptime_seconds, crash_type, ai_summary, raw_logs
+                     uptime_seconds, crash_type, ai_summary, raw_logs, acknowledged_at
             FROM crashes
             WHERE id = ?
             """,
@@ -307,7 +313,7 @@ async def get_crashes_for_export(limit: int = 5000) -> list[dict]:
         cursor = await db.execute(
             """
             SELECT id, container_name, container_id, timestamp, exit_code,
-                   restart_count, uptime_seconds, crash_type, ai_summary, raw_logs
+                     restart_count, uptime_seconds, crash_type, ai_summary, raw_logs, acknowledged_at
             FROM crashes
             ORDER BY datetime(timestamp) DESC
             LIMIT ?
@@ -379,6 +385,39 @@ async def is_container_muted(container_name: str) -> bool:
         )
         row = await cursor.fetchone()
         return bool(row)
+
+
+async def acknowledge_crash(crash_id: int) -> bool:
+    async def _op() -> bool:
+        async with _connect() as db:
+            cursor = await db.execute(
+                "UPDATE crashes SET acknowledged_at = ? WHERE id = ?",
+                (_utc_now_iso(), crash_id),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    return await _execute_with_retry(_op)
+
+
+async def unacknowledge_crash(crash_id: int) -> bool:
+    async def _op() -> bool:
+        async with _connect() as db:
+            cursor = await db.execute(
+                "UPDATE crashes SET acknowledged_at = NULL WHERE id = ?",
+                (crash_id,),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    return await _execute_with_retry(_op)
+
+
+async def count_unacknowledged_crashes() -> int:
+    async with _connect() as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM crashes WHERE acknowledged_at IS NULL")
+        row = await cursor.fetchone()
+        return int(row[0] if row else 0)
 
 
 async def get_stats() -> dict:

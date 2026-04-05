@@ -250,6 +250,10 @@
 
     .card-actions button { padding: 7px 10px; font-size: 12px; }
 
+    .unacked {
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 0 0 1px rgba(239,68,68,0.18);
+    }
+
     .logs {
       margin-top: 10px;
       display: none;
@@ -372,6 +376,10 @@
           <div class="label">Last Crash</div>
           <div id="lastCrash" class="value" style="font-size:15px;">-</div>
         </div>
+        <div class="stat">
+          <div class="label">Unacked Crashes</div>
+          <div id="unackedCrashes" class="value">0</div>
+        </div>
       </div>
     </section>
 
@@ -394,6 +402,11 @@
             <option>Network</option>
             <option>Clean exit</option>
             <option>Unknown</option>
+          </select>
+          <select id="ackFilter">
+            <option value="">All incidents</option>
+            <option value="false">Unacknowledged</option>
+            <option value="true">Acknowledged</option>
           </select>
           <button id="saveFilterBtn">Save Filter</button>
           <button id="loadFilterBtn">Load Filter</button>
@@ -503,6 +516,7 @@
         document.getElementById('topContainer').textContent = data.most_affected_container || '-';
         document.getElementById('topCrashType').textContent = data.most_common_crash_type || '-';
         document.getElementById('lastCrash').textContent = data.last_crash_time ? new Date(data.last_crash_time).toLocaleString() : '-';
+        document.getElementById('unackedCrashes').textContent = data.unacknowledged_crashes ?? 0;
         setDockerError(data.docker_error || '');
       } catch (err) {
         setDockerError('Failed to load stats.');
@@ -581,6 +595,7 @@
       return {
         container: document.getElementById('containerFilter').value.trim(),
         type: document.getElementById('typeFilter').value.trim(),
+        acknowledged: document.getElementById('ackFilter').value.trim(),
       };
     }
 
@@ -596,6 +611,7 @@
       const params = new URLSearchParams();
       if (f.container) params.set('container', f.container);
       if (f.type) params.set('type', f.type);
+      if (f.acknowledged) params.set('acknowledged', f.acknowledged);
       params.set('limit', String(state.pageSize));
       params.set('offset', String(state.offset));
 
@@ -691,6 +707,7 @@
         const crashType = crash.crash_type || 'Unknown';
         const card = document.createElement('article');
         card.className = 'card';
+        if (!crash.acknowledged_at) card.classList.add('unacked');
         card.style.borderLeftColor = borderColor(crashType);
 
         const top = document.createElement('div');
@@ -730,7 +747,17 @@
           muteContainer(crash.container_name, 60);
         });
 
+        const ackBtn = document.createElement('button');
+        ackBtn.textContent = crash.acknowledged_at ? 'Unack' : 'Acknowledge';
+        ackBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const action = crash.acknowledged_at ? 'unacknowledge' : 'acknowledge';
+          await getJson(`/api/crashes/${crash.id}/${action}`, { method: 'POST' });
+          refreshAll(true);
+        });
+
         actions.appendChild(logsBtn);
+        actions.appendChild(ackBtn);
         actions.appendChild(muteBtn);
 
         const logs = document.createElement('pre');
@@ -886,6 +913,7 @@
 
     document.getElementById('containerFilter').addEventListener('input', () => fetchCrashes(true));
     document.getElementById('typeFilter').addEventListener('change', () => fetchCrashes(true));
+    document.getElementById('ackFilter').addEventListener('change', () => fetchCrashes(true));
     elements.loadMoreBtn.addEventListener('click', () => fetchCrashes(false));
 
     loadFilters();

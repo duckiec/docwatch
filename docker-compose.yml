@@ -1,6 +1,7 @@
 version: '3.8'
 services:
   docwatch:
+    image: ghcr.io/duckiec/docwatch:latest
     build: .
     ports:
       - "${PORT:-8080}:8080"

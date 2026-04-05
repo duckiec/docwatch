@@ -43,8 +43,11 @@ async def api_crashes(
     type: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    acknowledged: bool | None = Query(default=None),
 ):
     crashes = await database.list_crashes(limit=limit, offset=offset, container=container, crash_type=type)
+    if acknowledged is not None:
+        crashes = [row for row in crashes if bool(row.get("acknowledged_at")) == acknowledged]
     return crashes
 
 
@@ -71,6 +74,22 @@ async def api_delete_crashes(
 ):
     deleted = await database.delete_crashes(container=container, crash_type=type)
     return {"ok": True, "deleted": deleted}
+
+
+@app.post("/api/crashes/{crash_id}/acknowledge")
+async def api_acknowledge_crash(crash_id: int):
+    updated = await database.acknowledge_crash(crash_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Crash not found")
+    return {"ok": True}
+
+
+@app.post("/api/crashes/{crash_id}/unacknowledge")
+async def api_unacknowledge_crash(crash_id: int):
+    updated = await database.unacknowledge_crash(crash_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Crash not found")
+    return {"ok": True}
 
 
 def _list_containers_sync() -> list[dict]:
@@ -108,6 +127,7 @@ async def api_containers():
 async def api_stats():
     stats = await database.get_stats()
     stats["docker_error"] = watcher.get_last_error()
+    stats["unacknowledged_crashes"] = await database.count_unacknowledged_crashes()
     return stats
 
 
@@ -143,6 +163,7 @@ async def api_export_crashes_csv(limit: int = Query(default=5000, ge=1, le=20000
             "crash_type",
             "ai_summary",
             "raw_logs",
+            "acknowledged_at",
         ]
     )
     for row in rows:
@@ -158,6 +179,7 @@ async def api_export_crashes_csv(limit: int = Query(default=5000, ge=1, le=20000
                 row.get("crash_type"),
                 row.get("ai_summary"),
                 row.get("raw_logs"),
+                row.get("acknowledged_at"),
             ]
         )
 
