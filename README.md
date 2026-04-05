@@ -20,10 +20,8 @@ This repo now includes a GitHub Actions workflow that builds and publishes a Doc
 Example:
 
 ```bash
-docker run ghcr.io/<owner>/docwatch:latest
+docker run ghcr.io/duckiec/docwatch:latest
 ```
-
-Replace `<owner>` with the GitHub account or organization that owns the repo.
 
 ## What It Tracks
 
