@@ -98,24 +98,24 @@ async def upsert_container_state(
     last_restart_count: int,
     last_status: str,
 ) -> None:
-        async def _op():
-                async with await _connect() as db:
-                        await db.execute(
-                                """
-                                INSERT INTO container_state (
-                                    container_id, container_name, last_restart_count, last_status, updated_at
-                                ) VALUES (?, ?, ?, ?, ?)
-                                ON CONFLICT(container_id) DO UPDATE SET
-                                    container_name=excluded.container_name,
-                                    last_restart_count=excluded.last_restart_count,
-                                    last_status=excluded.last_status,
-                                    updated_at=excluded.updated_at
-                                """,
-                                (container_id, container_name, last_restart_count, last_status, _utc_now_iso()),
-                        )
-                        await db.commit()
+    async def _op() -> None:
+        async with await _connect() as db:
+            await db.execute(
+                """
+                INSERT INTO container_state (
+                  container_id, container_name, last_restart_count, last_status, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(container_id) DO UPDATE SET
+                  container_name=excluded.container_name,
+                  last_restart_count=excluded.last_restart_count,
+                  last_status=excluded.last_status,
+                  updated_at=excluded.updated_at
+                """,
+                (container_id, container_name, last_restart_count, last_status, _utc_now_iso()),
+            )
+            await db.commit()
 
-        await _execute_with_retry(_op)
+    await _execute_with_retry(_op)
 
 
 async def insert_crash(record: dict) -> int:
@@ -205,6 +205,65 @@ async def delete_crash(crash_id: int) -> bool:
             return cursor.rowcount > 0
 
     return await _execute_with_retry(_op)
+
+
+async def delete_crashes(container: str | None = None, crash_type: str | None = None) -> int:
+    clauses = []
+    params: list = []
+
+    if container:
+        clauses.append("container_name LIKE ?")
+        params.append(f"%{container}%")
+
+    if crash_type:
+        clauses.append("crash_type = ?")
+        params.append(crash_type)
+
+    query = "DELETE FROM crashes"
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+
+    async def _op() -> int:
+        async with await _connect() as db:
+            cursor = await db.execute(query, params)
+            await db.commit()
+            return int(cursor.rowcount or 0)
+
+    return await _execute_with_retry(_op)
+
+
+async def delete_old_crashes(older_than_days: int) -> int:
+    if older_than_days <= 0:
+        return 0
+
+    query = "DELETE FROM crashes WHERE julianday(timestamp) < julianday('now', ?)"
+    params = (f"-{older_than_days} days",)
+
+    async def _op() -> int:
+        async with await _connect() as db:
+            cursor = await db.execute(query, params)
+            await db.commit()
+            return int(cursor.rowcount or 0)
+
+    return await _execute_with_retry(_op)
+
+
+async def get_crash_type_counts(limit: int = 10) -> list[dict]:
+    safe_limit = max(1, min(int(limit), 50))
+    async with await _connect() as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """
+            SELECT crash_type, COUNT(*) AS count
+            FROM crashes
+            GROUP BY crash_type
+            ORDER BY count DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
 
 
 async def get_stats() -> dict:

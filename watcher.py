@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import docker
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -24,11 +24,14 @@ def _get_int_env(name: str, default: int, minimum: int) -> int:
 
 MAX_LOG_LINES = _get_int_env("MAX_LOG_LINES", 200, 10)
 POLL_INTERVAL_SECONDS = _get_int_env("POLL_INTERVAL_SECONDS", 30, 5)
+CRASH_RETENTION_DAYS = _get_int_env("CRASH_RETENTION_DAYS", 30, 0)
+RETENTION_SWEEP_MINUTES = _get_int_env("RETENTION_SWEEP_MINUTES", 60, 5)
 
 scheduler = AsyncIOScheduler(job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 20})
 _summarizer = get_summarizer()
 _last_error: str | None = None
 logger = logging.getLogger("docwatch.watcher")
+_last_retention_sweep: datetime | None = None
 
 
 def get_last_error() -> str | None:
@@ -126,6 +129,8 @@ async def poll_docker() -> None:
         _last_error = f"Docker poll failed: {exc}"
         return
 
+    await _maybe_run_retention_cleanup()
+
     if not containers:
         return
 
@@ -183,6 +188,35 @@ async def poll_docker() -> None:
             await database.upsert_container_state(container_id, container_name, restart_count, status)
         except Exception:
             logger.exception("Container processing failed")
+
+
+async def trigger_poll_now() -> dict:
+    await poll_docker()
+    return {
+        "ok": True,
+        "docker_error": _last_error,
+        "polled_at": _utc_now_iso(),
+    }
+
+
+async def _maybe_run_retention_cleanup() -> None:
+    global _last_retention_sweep
+    if CRASH_RETENTION_DAYS <= 0:
+        return
+
+    now = datetime.now(timezone.utc)
+    if _last_retention_sweep is not None:
+        delta = now - _last_retention_sweep
+        if delta < timedelta(minutes=RETENTION_SWEEP_MINUTES):
+            return
+
+    _last_retention_sweep = now
+    try:
+        deleted = await database.delete_old_crashes(CRASH_RETENTION_DAYS)
+        if deleted:
+            logger.info("Retention sweep removed %s old crash rows", deleted)
+    except Exception:
+        logger.exception("Retention cleanup failed")
 
 
 def start_watcher() -> None:

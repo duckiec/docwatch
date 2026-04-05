@@ -71,6 +71,7 @@
       gap: 8px;
       align-items: center;
       margin-bottom: 10px;
+      flex-wrap: wrap;
     }
 
     input, select, button {
@@ -157,6 +158,34 @@
 
     .logs.open { display: block; }
 
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ghost {
+      background: transparent;
+      border-color: #4b5563;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: #121821;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #b7c4d3;
+    }
+
     .sidebar {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -238,6 +267,12 @@
       </section>
 
       <section class="card">
+        <div class="toolbar">
+          <button id="scanNowBtn">Scan Now</button>
+          <button id="testNotifyBtn" class="ghost">Test Notify</button>
+          <button id="clearFilteredBtn" class="ghost">Clear Filtered</button>
+        </div>
+        <div id="typeChips" class="chips"></div>
         <div class="feed-header">
           <input id="containerFilter" placeholder="Filter by container name" />
           <select id="typeFilter">
@@ -271,6 +306,7 @@
     const feed = document.getElementById('crashFeed');
     const containersList = document.getElementById('containersList');
     const dockerError = document.getElementById('dockerError');
+    const typeChips = document.getElementById('typeChips');
 
     function badgeClass(type) {
       const key = (type || 'unknown').toLowerCase().replace(/\s+/g, '');
@@ -302,6 +338,27 @@
       } catch (err) {
         dockerError.style.display = 'block';
         dockerError.textContent = 'Failed to load stats: ' + err;
+      }
+    }
+
+    async function fetchCrashTypes() {
+      try {
+        const res = await fetch('/api/crash-types?limit=8');
+        if (!res.ok) throw new Error('crash-types endpoint returned ' + res.status);
+        const rows = await res.json();
+        typeChips.innerHTML = '';
+        if (!rows.length) {
+          typeChips.innerHTML = '<span class="chip">No crash data</span>';
+          return;
+        }
+        rows.forEach((row) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = `${row.crash_type || 'Unknown'}: ${row.count}`;
+          typeChips.appendChild(chip);
+        });
+      } catch (err) {
+        typeChips.innerHTML = '<span class="chip" style="color:#ffb4ae;">Type summary unavailable</span>';
       }
     }
 
@@ -434,22 +491,95 @@
       }
     }
 
+    async function triggerScanNow() {
+      const btn = document.getElementById('scanNowBtn');
+      btn.disabled = true;
+      btn.textContent = 'Scanning...';
+      try {
+        const res = await fetch('/api/refresh', { method: 'POST' });
+        if (!res.ok) throw new Error('refresh failed');
+      } catch (err) {
+        dockerError.style.display = 'block';
+        dockerError.textContent = 'Manual scan failed.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Scan Now';
+        fetchStats();
+        fetchCrashes();
+        fetchCrashTypes();
+        fetchContainers();
+      }
+    }
+
+    async function triggerTestNotify() {
+      const btn = document.getElementById('testNotifyBtn');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Testing...';
+      try {
+        const res = await fetch('/api/test-notify', { method: 'POST' });
+        const data = await res.json();
+        btn.textContent = data.ok ? 'Notify OK' : 'Notify Failed';
+      } catch (err) {
+        btn.textContent = 'Notify Failed';
+      } finally {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = original;
+        }, 1200);
+      }
+    }
+
+    async function clearFiltered() {
+      const container = document.getElementById('containerFilter').value.trim();
+      const type = document.getElementById('typeFilter').value.trim();
+      const params = new URLSearchParams();
+      if (container) params.set('container', container);
+      if (type) params.set('type', type);
+
+      const message = container || type
+        ? 'Delete crashes matching current filters?'
+        : 'Delete all crashes?';
+      if (!confirm(message)) return;
+
+      const btn = document.getElementById('clearFilteredBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/crashes?' + params.toString(), { method: 'DELETE' });
+        if (!res.ok) throw new Error('delete failed');
+      } catch (err) {
+        dockerError.style.display = 'block';
+        dockerError.textContent = 'Failed to delete crash records.';
+      } finally {
+        btn.disabled = false;
+        fetchStats();
+        fetchCrashes();
+        fetchCrashTypes();
+      }
+    }
+
     document.getElementById('refreshBtn').addEventListener('click', () => {
       fetchStats();
       fetchCrashes();
+      fetchCrashTypes();
       fetchContainers();
     });
+    document.getElementById('scanNowBtn').addEventListener('click', triggerScanNow);
+    document.getElementById('testNotifyBtn').addEventListener('click', triggerTestNotify);
+    document.getElementById('clearFilteredBtn').addEventListener('click', clearFiltered);
 
     document.getElementById('containerFilter').addEventListener('input', fetchCrashes);
     document.getElementById('typeFilter').addEventListener('change', fetchCrashes);
 
     fetchStats();
     fetchCrashes();
+    fetchCrashTypes();
     fetchContainers();
 
     setInterval(fetchStats, 30000);
     setInterval(fetchContainers, 15000);
     setInterval(fetchCrashes, 30000);
+    setInterval(fetchCrashTypes, 30000);
   </script>
 </body>
 </html>

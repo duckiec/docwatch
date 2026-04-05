@@ -60,6 +60,15 @@ async def api_delete_crash(crash_id: int):
     return {"ok": True}
 
 
+@app.delete("/api/crashes")
+async def api_delete_crashes(
+    container: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+):
+    deleted = await database.delete_crashes(container=container, crash_type=type)
+    return {"ok": True, "deleted": deleted}
+
+
 def _list_containers_sync() -> list[dict]:
     client = docker.from_env()
     try:
@@ -96,6 +105,16 @@ async def api_stats():
     stats = await database.get_stats()
     stats["docker_error"] = watcher.get_last_error()
     return stats
+
+
+@app.get("/api/crash-types")
+async def api_crash_types(limit: int = Query(default=10, ge=1, le=50)):
+    return await database.get_crash_type_counts(limit=limit)
+
+
+@app.post("/api/refresh")
+async def api_refresh():
+    return await watcher.trigger_poll_now()
 
 
 @app.post("/api/test-notify")
