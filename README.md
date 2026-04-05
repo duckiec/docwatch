@@ -24,19 +24,27 @@ docker-compose up --build
 
 - Manual scan now from UI and API (`POST /api/refresh`)
 - Crash type summary endpoint (`GET /api/crash-types`)
+- 24h timeline endpoint for trend charting (`GET /api/timeline`)
+- CSV export for incident history (`GET /api/export/crashes.csv`)
 - Bulk crash deletion with optional filters (`DELETE /api/crashes?container=...&type=...`)
+- Notification mute rules per container (`GET/POST/DELETE /api/muted-containers`)
 - Automatic retention cleanup (`CRASH_RETENTION_DAYS`)
 - Health status endpoint (`GET /api/health`)
 
 ## API Endpoints
 
-- `GET /api/crashes?container=&type=&limit=` list crashes
+- `GET /api/crashes?container=&type=&limit=&offset=` list crashes (pagination)
 - `GET /api/crashes/{id}` crash details with full logs
 - `DELETE /api/crashes/{id}` delete one crash
 - `DELETE /api/crashes?container=&type=` delete filtered crashes
 - `GET /api/containers` list live containers
 - `GET /api/stats` top-level dashboard stats
 - `GET /api/crash-types?limit=` aggregate by crash type
+- `GET /api/timeline?hours=` hourly crash counts
+- `GET /api/export/crashes.csv?limit=` download CSV
+- `GET /api/muted-containers` list active mute rules
+- `POST /api/muted-containers?container_name=&minutes=&reason=` add/update mute rule
+- `DELETE /api/muted-containers?container_name=` remove mute rule
 - `POST /api/test-notify` send test Telegram/email notification
 - `POST /api/refresh` run poll loop immediately
 - `GET /api/health` app and watcher status

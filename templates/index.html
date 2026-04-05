@@ -6,203 +6,294 @@
   <title>DocWatch</title>
   <style>
     :root {
-      --bg: #0d1117;
-      --panel: #161b22;
-      --panel-2: #1f2630;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --green: #3fb950;
-      --red: #f85149;
-      --amber: #d29922;
-      --blue: #58a6ff;
-      --border: #30363d;
+      --bg: #0a0e14;
+      --panel: #121924;
+      --panel-soft: #172130;
+      --text: #edf2f7;
+      --muted: #95a3b8;
+      --line: #273349;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --blue: #38bdf8;
+      --pink: #fb7185;
+      --radius: 14px;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: radial-gradient(circle at top right, #101825, var(--bg) 40%);
+      font-family: "Aptos", "Segoe UI", Tahoma, sans-serif;
       color: var(--text);
+      background:
+        radial-gradient(1000px 420px at -10% -20%, #1a2740 0%, transparent 65%),
+        radial-gradient(700px 360px at 110% -15%, #2a1f3e 0%, transparent 70%),
+        var(--bg);
       min-height: 100vh;
     }
 
-    .app {
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
       display: grid;
-      grid-template-columns: 1fr 340px;
       gap: 16px;
-      padding: 16px;
     }
 
-    .left { min-width: 0; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    }
+
+    .headline {
+      font-size: 28px;
+      letter-spacing: 0.02em;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .error {
+      margin-top: 10px;
+      display: none;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      background: rgba(239, 68, 68, 0.1);
+      color: #fecaca;
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button, select, input {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      background: #0f1520;
+      padding: 9px 12px;
+      font-size: 13px;
+    }
+
+    button {
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: #4a5973;
+    }
+
+    .btn-main {
+      background: linear-gradient(120deg, #1d4ed8, #0ea5e9);
+      border-color: rgba(56,189,248,0.5);
+      font-weight: 700;
+    }
+
+    .btn-danger {
+      border-color: rgba(239,68,68,0.45);
+      background: rgba(239,68,68,0.12);
+    }
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, minmax(180px, 1fr));
-      gap: 12px;
-      margin-bottom: 12px;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 10px;
     }
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
+    .stat {
+      border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
+      padding: 10px;
+      background: #101724;
     }
 
-    .metric-title {
+    .label {
+      font-size: 11px;
       color: var(--muted);
-      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
-    .metric-value {
-      font-size: 24px;
+    .value {
+      font-size: 21px;
       font-weight: 700;
-      line-height: 1.2;
     }
 
-    .feed-header {
+    .layout {
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 16px;
+    }
+
+    .filters {
       display: flex;
       gap: 8px;
-      align-items: center;
+      flex-wrap: wrap;
       margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-
-    input, select, button {
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
-      padding: 8px 10px;
-    }
-
-    button { cursor: pointer; }
-
-    .feed {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .crash-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-left-width: 4px;
-      border-radius: 10px;
-      padding: 12px;
-      cursor: pointer;
-      transition: transform 0.12s ease, border-color 0.12s ease;
-    }
-
-    .crash-card:hover {
-      transform: translateY(-1px);
-      border-color: #4b5563;
-    }
-
-    .crash-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .container-name {
-      font-family: Consolas, "Courier New", monospace;
-      font-weight: 700;
-      color: #a5d6ff;
-    }
-
-    .timestamp {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .summary {
-      margin-top: 10px;
-      line-height: 1.4;
-    }
-
-    .badge {
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 12px;
-      border: 1px solid transparent;
-      font-weight: 700;
-    }
-
-    .badge-oom, .badge-exit137 { background: rgba(248,81,73,0.15); color: #ffb4ae; border-color: rgba(248,81,73,0.45); }
-    .badge-exit1, .badge-configerror { background: rgba(210,153,34,0.16); color: #ffd58a; border-color: rgba(210,153,34,0.45); }
-    .badge-network { background: rgba(88,166,255,0.16); color: #b9dcff; border-color: rgba(88,166,255,0.45); }
-    .badge-cleanexit { background: rgba(63,185,80,0.15); color: #9de5a8; border-color: rgba(63,185,80,0.45); }
-    .badge-unknown { background: rgba(139,148,158,0.2); color: #d0d7de; border-color: rgba(139,148,158,0.45); }
-
-    .logs {
-      margin-top: 10px;
-      max-height: 260px;
-      overflow: auto;
-      background: #0b0f14;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      font-family: Consolas, "Courier New", monospace;
-      white-space: pre-wrap;
-      display: none;
-    }
-
-    .logs.open { display: block; }
-
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-
-    .ghost {
-      background: transparent;
-      border-color: #4b5563;
     }
 
     .chips {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
+      margin: 10px 0;
     }
 
     .chip {
-      border: 1px solid var(--border);
-      background: #121821;
       border-radius: 999px;
       padding: 6px 10px;
+      border: 1px solid var(--line);
+      color: #c3d0e4;
+      background: #0f1520;
       font-size: 12px;
-      color: #b7c4d3;
     }
 
-    .sidebar {
-      background: var(--panel);
-      border: 1px solid var(--border);
+    .timeline {
+      width: 100%;
+      height: 140px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0e1420;
+      padding: 6px;
+    }
+
+    .feed { display: grid; gap: 10px; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-left-width: 4px;
       border-radius: 12px;
       padding: 12px;
-      height: fit-content;
-      position: sticky;
-      top: 16px;
+      background: #101824;
+      transition: border-color 0.14s ease, transform 0.14s ease;
     }
 
-    .container-row {
+    .card:hover {
+      border-color: #3e4f6b;
+      transform: translateY(-1px);
+    }
+
+    .card-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
       gap: 8px;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .container {
+      font-family: "Consolas", "Courier New", monospace;
+      color: #c9e5ff;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .stamp {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .summary {
+      margin-top: 10px;
+      color: #d7dfeb;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill-oom, .pill-exit137 { background: rgba(239,68,68,0.16); color: #fecaca; border-color: rgba(239,68,68,0.45); }
+    .pill-exit1, .pill-configerror { background: rgba(245,158,11,0.16); color: #fde68a; border-color: rgba(245,158,11,0.45); }
+    .pill-network { background: rgba(56,189,248,0.16); color: #bae6fd; border-color: rgba(56,189,248,0.45); }
+    .pill-cleanexit { background: rgba(34,197,94,0.16); color: #bbf7d0; border-color: rgba(34,197,94,0.45); }
+    .pill-unknown { background: rgba(148,163,184,0.18); color: #dbe4f0; border-color: rgba(148,163,184,0.45); }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card-actions button { padding: 7px 10px; font-size: 12px; }
+
+    .logs {
+      margin-top: 10px;
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #0b111b;
+      font-family: "Consolas", "Courier New", monospace;
+      white-space: pre-wrap;
+      max-height: 260px;
+      overflow: auto;
+      color: #d3dce8;
+    }
+
+    .logs.open { display: block; }
+
+    .side-title {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .list { display: grid; gap: 8px; }
+
+    .row {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      background: #0f1724;
+    }
+
+    .row-left {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 13px;
     }
 
     .dot {
@@ -213,70 +304,89 @@
       margin-right: 8px;
     }
 
-    .dot-running { background: var(--green); }
-    .dot-stopped { background: var(--red); }
+    .run { background: var(--green); }
+    .stop { background: var(--red); }
 
-    .mono {
-      font-family: Consolas, "Courier New", monospace;
+    .pagination {
+      margin-top: 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .muted-row {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #0f1724;
+      display: grid;
+      gap: 6px;
+    }
+
+    .muted-name {
+      font-family: "Consolas", "Courier New", monospace;
       font-size: 13px;
+      color: #ffd8e0;
+      font-weight: 700;
     }
 
-    .error {
-      background: rgba(248,81,73,0.15);
-      color: #ffb4ae;
-      border: 1px solid rgba(248,81,73,0.45);
-      padding: 8px 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      display: none;
+    @media (max-width: 1080px) {
+      .hero { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
     }
 
-    @media (max-width: 980px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        position: static;
-      }
-
-      .stats {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 720px) {
+      .stats { grid-template-columns: 1fr; }
+      .headline { font-size: 24px; }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="left">
-      <div id="dockerError" class="error"></div>
+  <main class="page">
+    <section class="hero">
+      <div class="panel">
+        <div class="headline">DocWatch Incident Control</div>
+        <div class="sub">Monitor crashes, suppress noisy alerts per container, export incident history, and inspect trend velocity over time.</div>
+        <div id="dockerError" class="error"></div>
+        <div class="actions">
+          <button id="scanNowBtn" class="btn-main">Scan Now</button>
+          <button id="testNotifyBtn">Test Notify</button>
+          <button id="exportCsvBtn">Export CSV</button>
+          <button id="clearFilteredBtn" class="btn-danger">Clear Filtered</button>
+        </div>
+      </div>
+      <div class="panel stats">
+        <div class="stat">
+          <div class="label">Crashes Today</div>
+          <div id="crashesToday" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Top Container</div>
+          <div id="topContainer" class="value">-</div>
+        </div>
+        <div class="stat">
+          <div class="label">Top Crash Type</div>
+          <div id="topCrashType" class="value">-</div>
+        </div>
+        <div class="stat">
+          <div class="label">Last Crash</div>
+          <div id="lastCrash" class="value" style="font-size:15px;">-</div>
+        </div>
+      </div>
+    </section>
 
-      <section class="stats">
-        <div class="card">
-          <div class="metric-title">Crashes Today</div>
-          <div id="crashesToday" class="metric-value">0</div>
-        </div>
-        <div class="card">
-          <div class="metric-title">Most Affected Container</div>
-          <div id="topContainer" class="metric-value">-</div>
-        </div>
-        <div class="card">
-          <div class="metric-title">Last Crash Time</div>
-          <div id="lastCrash" class="metric-value" style="font-size:16px;">-</div>
-        </div>
-      </section>
+    <section class="panel">
+      <div class="side-title">Crash Trend (24h)</div>
+      <svg id="timeline" class="timeline" viewBox="0 0 1000 140" preserveAspectRatio="none"></svg>
+      <div id="typeChips" class="chips"></div>
+    </section>
 
-      <section class="card">
-        <div class="toolbar">
-          <button id="scanNowBtn">Scan Now</button>
-          <button id="testNotifyBtn" class="ghost">Test Notify</button>
-          <button id="clearFilteredBtn" class="ghost">Clear Filtered</button>
-        </div>
-        <div id="typeChips" class="chips"></div>
-        <div class="feed-header">
-          <input id="containerFilter" placeholder="Filter by container name" />
+    <section class="layout">
+      <section class="panel">
+        <div class="filters">
+          <input id="containerFilter" placeholder="Container filter" />
           <select id="typeFilter">
-            <option value="">All crash types</option>
+            <option value="">All types</option>
             <option>OOM</option>
             <option>Exit 1</option>
             <option>Exit 137</option>
@@ -285,242 +395,431 @@
             <option>Clean exit</option>
             <option>Unknown</option>
           </select>
+          <button id="saveFilterBtn">Save Filter</button>
+          <button id="loadFilterBtn">Load Filter</button>
           <button id="refreshBtn">Refresh</button>
         </div>
         <div id="crashFeed" class="feed"></div>
+        <div class="pagination">
+          <button id="loadMoreBtn">Load More</button>
+        </div>
       </section>
-    </div>
 
-    <aside class="sidebar">
-      <h3 style="margin: 6px 0 8px 0;">Live Containers</h3>
-      <div id="containersList"></div>
-    </aside>
-  </div>
+      <aside class="panel">
+        <div class="side-title">Live Containers</div>
+        <div id="containersList" class="list"></div>
+
+        <div class="side-title" style="margin-top:14px;">Muted Notifications</div>
+        <div class="filters" style="margin-bottom:8px;">
+          <input id="muteContainerInput" placeholder="container name" />
+          <select id="muteMinutesInput">
+            <option value="30">30m</option>
+            <option value="60" selected>1h</option>
+            <option value="240">4h</option>
+            <option value="1440">24h</option>
+          </select>
+          <button id="addMuteBtn">Mute</button>
+        </div>
+        <div id="muteList" class="list"></div>
+      </aside>
+    </section>
+  </main>
 
   <script>
     const state = {
       crashes: [],
       crashDetails: new Map(),
+      offset: 0,
+      pageSize: 30,
+      hasMore: true,
     };
 
-    const feed = document.getElementById('crashFeed');
-    const containersList = document.getElementById('containersList');
-    const dockerError = document.getElementById('dockerError');
-    const typeChips = document.getElementById('typeChips');
+    const elements = {
+      feed: document.getElementById('crashFeed'),
+      containers: document.getElementById('containersList'),
+      dockerError: document.getElementById('dockerError'),
+      typeChips: document.getElementById('typeChips'),
+      timeline: document.getElementById('timeline'),
+      muteList: document.getElementById('muteList'),
+      loadMoreBtn: document.getElementById('loadMoreBtn'),
+    };
+
+    function setDockerError(message) {
+      if (message) {
+        elements.dockerError.style.display = 'block';
+        elements.dockerError.textContent = message;
+      } else {
+        elements.dockerError.style.display = 'none';
+      }
+    }
 
     function badgeClass(type) {
       const key = (type || 'unknown').toLowerCase().replace(/\s+/g, '');
-      if (key === 'oom') return 'badge badge-oom';
-      if (key === 'exit1') return 'badge badge-exit1';
-      if (key === 'exit137') return 'badge badge-exit137';
-      if (key === 'configerror') return 'badge badge-configerror';
-      if (key === 'network') return 'badge badge-network';
-      if (key === 'cleanexit') return 'badge badge-cleanexit';
-      return 'badge badge-unknown';
+      if (key === 'oom') return 'pill pill-oom';
+      if (key === 'exit1') return 'pill pill-exit1';
+      if (key === 'exit137') return 'pill pill-exit137';
+      if (key === 'configerror') return 'pill pill-configerror';
+      if (key === 'network') return 'pill pill-network';
+      if (key === 'cleanexit') return 'pill pill-cleanexit';
+      return 'pill pill-unknown';
+    }
+
+    function borderColor(type) {
+      if (type === 'OOM' || type === 'Exit 137') return 'var(--red)';
+      if (type === 'Exit 1' || type === 'Config error') return 'var(--amber)';
+      if (type === 'Network') return 'var(--blue)';
+      return '#52607b';
+    }
+
+    function saveFilters() {
+      const payload = {
+        container: document.getElementById('containerFilter').value.trim(),
+        type: document.getElementById('typeFilter').value.trim(),
+      };
+      localStorage.setItem('docwatch.filters', JSON.stringify(payload));
+    }
+
+    function loadFilters() {
+      const raw = localStorage.getItem('docwatch.filters');
+      if (!raw) return;
+      try {
+        const f = JSON.parse(raw);
+        document.getElementById('containerFilter').value = f.container || '';
+        document.getElementById('typeFilter').value = f.type || '';
+      } catch (_) {
+      }
+    }
+
+    async function getJson(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(url + ' returned ' + res.status);
+      return await res.json();
     }
 
     async function fetchStats() {
       try {
-        const res = await fetch('/api/stats');
-        if (!res.ok) throw new Error('stats endpoint returned ' + res.status);
-        const data = await res.json();
-
+        const data = await getJson('/api/stats');
         document.getElementById('crashesToday').textContent = data.crashes_today ?? 0;
         document.getElementById('topContainer').textContent = data.most_affected_container || '-';
+        document.getElementById('topCrashType').textContent = data.most_common_crash_type || '-';
         document.getElementById('lastCrash').textContent = data.last_crash_time ? new Date(data.last_crash_time).toLocaleString() : '-';
-
-        if (data.docker_error) {
-          dockerError.style.display = 'block';
-          dockerError.textContent = data.docker_error;
-        } else {
-          dockerError.style.display = 'none';
-        }
+        setDockerError(data.docker_error || '');
       } catch (err) {
-        dockerError.style.display = 'block';
-        dockerError.textContent = 'Failed to load stats: ' + err;
+        setDockerError('Failed to load stats.');
       }
     }
 
     async function fetchCrashTypes() {
       try {
-        const res = await fetch('/api/crash-types?limit=8');
-        if (!res.ok) throw new Error('crash-types endpoint returned ' + res.status);
-        const rows = await res.json();
-        typeChips.innerHTML = '';
+        const rows = await getJson('/api/crash-types?limit=10');
+        elements.typeChips.innerHTML = '';
         if (!rows.length) {
-          typeChips.innerHTML = '<span class="chip">No crash data</span>';
+          elements.typeChips.innerHTML = '<span class="chip">No crash data</span>';
           return;
         }
         rows.forEach((row) => {
           const chip = document.createElement('span');
           chip.className = 'chip';
           chip.textContent = `${row.crash_type || 'Unknown'}: ${row.count}`;
-          typeChips.appendChild(chip);
+          elements.typeChips.appendChild(chip);
         });
-      } catch (err) {
-        typeChips.innerHTML = '<span class="chip" style="color:#ffb4ae;">Type summary unavailable</span>';
+      } catch (_) {
+        elements.typeChips.innerHTML = '<span class="chip" style="color:#fecaca;">Crash type summary unavailable</span>';
       }
     }
 
-    async function fetchCrashes() {
-      const container = document.getElementById('containerFilter').value.trim();
-      const type = document.getElementById('typeFilter').value.trim();
+    function drawTimeline(rows) {
+      const svg = elements.timeline;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const width = 1000;
+      const height = 140;
+      const points = [];
 
+      const map = new Map((rows || []).map((x) => [x.bucket, x.count]));
+      const now = new Date();
+      const buckets = [];
+      for (let i = 23; i >= 0; i -= 1) {
+        const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+        const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}T${String(d.getUTCHours()).padStart(2, '0')}:00:00Z`;
+        buckets.push({ key, count: map.get(key) || 0 });
+      }
+
+      const max = Math.max(1, ...buckets.map((x) => x.count));
+      buckets.forEach((b, i) => {
+        const x = (i / (buckets.length - 1)) * width;
+        const y = height - (b.count / max) * (height - 20) - 10;
+        points.push(`${x},${y}`);
+      });
+
+      const baseline = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      baseline.setAttribute('x1', '0');
+      baseline.setAttribute('x2', String(width));
+      baseline.setAttribute('y1', String(height - 8));
+      baseline.setAttribute('y2', String(height - 8));
+      baseline.setAttribute('stroke', '#334155');
+      baseline.setAttribute('stroke-width', '1');
+      svg.appendChild(baseline);
+
+      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', '#38bdf8');
+      poly.setAttribute('stroke-width', '3');
+      poly.setAttribute('points', points.join(' '));
+      svg.appendChild(poly);
+    }
+
+    async function fetchTimeline() {
+      try {
+        const rows = await getJson('/api/timeline?hours=24');
+        drawTimeline(rows);
+      } catch (_) {
+        drawTimeline([]);
+      }
+    }
+
+    function getFilters() {
+      return {
+        container: document.getElementById('containerFilter').value.trim(),
+        type: document.getElementById('typeFilter').value.trim(),
+      };
+    }
+
+    async function fetchCrashes(reset = false) {
+      if (reset) {
+        state.offset = 0;
+        state.hasMore = true;
+        state.crashes = [];
+      }
+      if (!state.hasMore) return;
+
+      const f = getFilters();
       const params = new URLSearchParams();
-      if (container) params.set('container', container);
-      if (type) params.set('type', type);
+      if (f.container) params.set('container', f.container);
+      if (f.type) params.set('type', f.type);
+      params.set('limit', String(state.pageSize));
+      params.set('offset', String(state.offset));
 
       try {
-        const res = await fetch('/api/crashes?' + params.toString());
-        if (!res.ok) throw new Error('crashes endpoint returned ' + res.status);
-        state.crashes = await res.json();
+        const rows = await getJson('/api/crashes?' + params.toString());
+        state.crashes = reset ? rows : state.crashes.concat(rows);
+        state.offset += rows.length;
+        state.hasMore = rows.length === state.pageSize;
+        elements.loadMoreBtn.style.display = state.hasMore ? 'inline-block' : 'none';
         renderCrashes();
-      } catch (err) {
-        feed.innerHTML = '<div class="card" style="color:#ffb4ae;">Failed to load crashes.</div>';
+      } catch (_) {
+        elements.feed.innerHTML = '<div class="panel" style="color:#fecaca;">Failed to load crashes.</div>';
+      }
+    }
+
+    async function expandLogs(crashId, logsEl) {
+      if (!state.crashDetails.has(crashId)) {
+        try {
+          const detail = await getJson(`/api/crashes/${crashId}`);
+          state.crashDetails.set(crashId, detail);
+        } catch (_) {
+          logsEl.textContent = 'Failed to load logs.';
+          logsEl.classList.add('open');
+          return;
+        }
+      }
+      const detail = state.crashDetails.get(crashId);
+      logsEl.textContent = detail.raw_logs || '(no logs available)';
+      logsEl.classList.toggle('open');
+    }
+
+    async function muteContainer(name, minutes = 60) {
+      const params = new URLSearchParams({ container_name: name, minutes: String(minutes), reason: 'UI mute' });
+      try {
+        await getJson('/api/muted-containers?' + params.toString(), { method: 'POST' });
+        await fetchMutedContainers();
+      } catch (_) {
+        setDockerError('Failed to set mute rule.');
+      }
+    }
+
+    async function fetchMutedContainers() {
+      try {
+        const rows = await getJson('/api/muted-containers');
+        elements.muteList.innerHTML = '';
+        if (!rows.length) {
+          elements.muteList.innerHTML = '<div class="row"><div class="row-left">No active mutes</div></div>';
+          return;
+        }
+        rows.forEach((row) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'muted-row';
+
+          const n = document.createElement('div');
+          n.className = 'muted-name';
+          n.textContent = row.container_name;
+
+          const t = document.createElement('div');
+          t.className = 'sub';
+          t.style.fontSize = '12px';
+          t.textContent = 'Until ' + new Date(row.muted_until).toLocaleString();
+
+          const btn = document.createElement('button');
+          btn.textContent = 'Unmute';
+          btn.addEventListener('click', async () => {
+            const q = new URLSearchParams({ container_name: row.container_name });
+            try {
+              await getJson('/api/muted-containers?' + q.toString(), { method: 'DELETE' });
+              await fetchMutedContainers();
+            } catch (_) {
+              setDockerError('Failed to clear mute rule.');
+            }
+          });
+
+          wrapper.appendChild(n);
+          wrapper.appendChild(t);
+          wrapper.appendChild(btn);
+          elements.muteList.appendChild(wrapper);
+        });
+      } catch (_) {
+        elements.muteList.innerHTML = '<div class="row"><div class="row-left" style="color:#fecaca;">Mute list unavailable</div></div>';
       }
     }
 
     function renderCrashes() {
-      feed.innerHTML = '';
+      elements.feed.innerHTML = '';
       if (!state.crashes.length) {
-        feed.innerHTML = '<div class="card">No crashes found.</div>';
+        elements.feed.innerHTML = '<div class="panel">No crashes found.</div>';
         return;
       }
 
       state.crashes.forEach((crash) => {
-        const card = document.createElement('div');
-        card.className = 'crash-card';
-
         const crashType = crash.crash_type || 'Unknown';
-        if (crashType === 'OOM' || crashType === 'Exit 137') {
-          card.style.borderLeftColor = 'var(--red)';
-        } else if (crashType === 'Exit 1' || crashType === 'Config error') {
-          card.style.borderLeftColor = 'var(--amber)';
-        } else if (crashType === 'Network') {
-          card.style.borderLeftColor = 'var(--blue)';
-        } else {
-          card.style.borderLeftColor = '#5b6470';
-        }
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.style.borderLeftColor = borderColor(crashType);
 
         const top = document.createElement('div');
-        top.className = 'crash-top';
+        top.className = 'card-top';
 
         const left = document.createElement('div');
-        const name = document.createElement('div');
-        name.className = 'container-name';
-        name.textContent = crash.container_name || 'unknown';
-        const ts = document.createElement('div');
-        ts.className = 'timestamp';
-        ts.textContent = crash.timestamp ? new Date(crash.timestamp).toLocaleString() : '-';
-        left.appendChild(name);
-        left.appendChild(ts);
+        const c = document.createElement('div');
+        c.className = 'container';
+        c.textContent = crash.container_name || 'unknown';
+        const stamp = document.createElement('div');
+        stamp.className = 'stamp';
+        stamp.textContent = crash.timestamp ? new Date(crash.timestamp).toLocaleString() : '-';
+        left.appendChild(c);
+        left.appendChild(stamp);
 
-        const badge = document.createElement('span');
-        badge.className = badgeClass(crashType);
-        badge.textContent = crashType;
+        const pill = document.createElement('span');
+        pill.className = badgeClass(crashType);
+        pill.textContent = crashType;
 
         top.appendChild(left);
-        top.appendChild(badge);
+        top.appendChild(pill);
 
         const summary = document.createElement('div');
         summary.className = 'summary';
         summary.textContent = crash.ai_summary || 'AI summary unavailable';
 
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+
+        const logsBtn = document.createElement('button');
+        logsBtn.textContent = 'Toggle Logs';
+
+        const muteBtn = document.createElement('button');
+        muteBtn.textContent = 'Mute 1h';
+        muteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          muteContainer(crash.container_name, 60);
+        });
+
+        actions.appendChild(logsBtn);
+        actions.appendChild(muteBtn);
+
         const logs = document.createElement('pre');
-        logs.id = `logs-${crash.id}`;
         logs.className = 'logs';
         logs.textContent = 'Loading logs...';
 
-        card.appendChild(top);
-        card.appendChild(summary);
-        card.appendChild(logs);
-
-        card.addEventListener('click', async () => {
-          const logsEl = card.querySelector(`#logs-${crash.id}`);
-          if (!logsEl.classList.contains('open')) {
-            if (!state.crashDetails.has(crash.id)) {
-              try {
-                const detailRes = await fetch(`/api/crashes/${crash.id}`);
-                if (!detailRes.ok) throw new Error('detail endpoint returned ' + detailRes.status);
-                const detail = await detailRes.json();
-                state.crashDetails.set(crash.id, detail);
-              } catch (err) {
-                logsEl.textContent = 'Failed to load logs.';
-              }
-            }
-            const detail = state.crashDetails.get(crash.id);
-            if (detail) {
-              logsEl.textContent = detail.raw_logs || '(no logs available)';
-            }
-          }
-          logsEl.classList.toggle('open');
+        logsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          expandLogs(crash.id, logs);
         });
 
-        feed.appendChild(card);
+        card.appendChild(top);
+        card.appendChild(summary);
+        card.appendChild(actions);
+        card.appendChild(logs);
+        elements.feed.appendChild(card);
       });
     }
 
     async function fetchContainers() {
       try {
-        const res = await fetch('/api/containers');
-        if (!res.ok) throw new Error('containers endpoint returned ' + res.status);
-        const data = await res.json();
-
-        containersList.innerHTML = '';
-        if (data.error) {
-          dockerError.style.display = 'block';
-          dockerError.textContent = data.error;
-        }
+        const data = await getJson('/api/containers');
+        elements.containers.innerHTML = '';
+        if (data.error) setDockerError(data.error);
 
         (data.containers || []).forEach((container) => {
           const row = document.createElement('div');
-          row.className = 'container-row';
-          const running = container.status === 'running';
-          row.innerHTML = `
-            <div class="mono"><span class="dot ${running ? 'dot-running' : 'dot-stopped'}"></span>${container.name}</div>
-            <div class="mono">${container.restart_count} restarts</div>
-          `;
-          containersList.appendChild(row);
+          row.className = 'row';
+
+          const left = document.createElement('div');
+          left.className = 'row-left';
+          const dot = document.createElement('span');
+          dot.className = 'dot ' + (container.status === 'running' ? 'run' : 'stop');
+          left.appendChild(dot);
+          left.appendChild(document.createTextNode(container.name));
+
+          const right = document.createElement('div');
+          right.style.display = 'flex';
+          right.style.gap = '6px';
+
+          const mute = document.createElement('button');
+          mute.textContent = 'Mute';
+          mute.addEventListener('click', () => muteContainer(container.name, 60));
+
+          const restarts = document.createElement('span');
+          restarts.className = 'chip';
+          restarts.textContent = container.restart_count + 'r';
+
+          right.appendChild(restarts);
+          right.appendChild(mute);
+
+          row.appendChild(left);
+          row.appendChild(right);
+          elements.containers.appendChild(row);
         });
 
         if (!(data.containers || []).length) {
-          containersList.innerHTML = '<div class="mono" style="color: var(--muted);">No containers found.</div>';
+          elements.containers.innerHTML = '<div class="row"><div class="row-left">No containers found</div></div>';
         }
-      } catch (err) {
-        containersList.innerHTML = '<div class="mono" style="color: #ffb4ae;">Failed to load containers.</div>';
+      } catch (_) {
+        elements.containers.innerHTML = '<div class="row"><div class="row-left" style="color:#fecaca;">Failed to load containers</div></div>';
       }
     }
 
-    async function triggerScanNow() {
+    async function triggerScan() {
       const btn = document.getElementById('scanNowBtn');
+      const original = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Scanning...';
       try {
-        const res = await fetch('/api/refresh', { method: 'POST' });
-        if (!res.ok) throw new Error('refresh failed');
-      } catch (err) {
-        dockerError.style.display = 'block';
-        dockerError.textContent = 'Manual scan failed.';
+        await getJson('/api/refresh', { method: 'POST' });
+      } catch (_) {
+        setDockerError('Manual scan failed.');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Scan Now';
-        fetchStats();
-        fetchCrashes();
-        fetchCrashTypes();
-        fetchContainers();
+        btn.textContent = original;
+        refreshAll(true);
       }
     }
 
-    async function triggerTestNotify() {
+    async function testNotify() {
       const btn = document.getElementById('testNotifyBtn');
-      btn.disabled = true;
       const original = btn.textContent;
+      btn.disabled = true;
       btn.textContent = 'Testing...';
       try {
-        const res = await fetch('/api/test-notify', { method: 'POST' });
-        const data = await res.json();
-        btn.textContent = data.ok ? 'Notify OK' : 'Notify Failed';
-      } catch (err) {
+        const r = await getJson('/api/test-notify', { method: 'POST' });
+        btn.textContent = r.ok ? 'Notify OK' : 'Notify Failed';
+      } catch (_) {
         btn.textContent = 'Notify Failed';
       } finally {
         setTimeout(() => {
@@ -530,56 +829,73 @@
       }
     }
 
+    function exportCsv() {
+      window.open('/api/export/crashes.csv?limit=20000', '_blank');
+    }
+
     async function clearFiltered() {
-      const container = document.getElementById('containerFilter').value.trim();
-      const type = document.getElementById('typeFilter').value.trim();
+      const f = getFilters();
       const params = new URLSearchParams();
-      if (container) params.set('container', container);
-      if (type) params.set('type', type);
+      if (f.container) params.set('container', f.container);
+      if (f.type) params.set('type', f.type);
 
-      const message = container || type
-        ? 'Delete crashes matching current filters?'
-        : 'Delete all crashes?';
-      if (!confirm(message)) return;
+      const msg = (f.container || f.type)
+        ? 'Delete filtered crash records?'
+        : 'Delete all crash records?';
+      if (!confirm(msg)) return;
 
-      const btn = document.getElementById('clearFilteredBtn');
-      btn.disabled = true;
       try {
-        const res = await fetch('/api/crashes?' + params.toString(), { method: 'DELETE' });
-        if (!res.ok) throw new Error('delete failed');
-      } catch (err) {
-        dockerError.style.display = 'block';
-        dockerError.textContent = 'Failed to delete crash records.';
-      } finally {
-        btn.disabled = false;
-        fetchStats();
-        fetchCrashes();
-        fetchCrashTypes();
+        await getJson('/api/crashes?' + params.toString(), { method: 'DELETE' });
+        state.crashDetails.clear();
+        refreshAll(true);
+      } catch (_) {
+        setDockerError('Failed to delete records.');
       }
     }
 
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-      fetchStats();
-      fetchCrashes();
-      fetchCrashTypes();
-      fetchContainers();
-    });
-    document.getElementById('scanNowBtn').addEventListener('click', triggerScanNow);
-    document.getElementById('testNotifyBtn').addEventListener('click', triggerTestNotify);
+    async function addMuteFromInput() {
+      const name = document.getElementById('muteContainerInput').value.trim();
+      const minutes = Number(document.getElementById('muteMinutesInput').value || '60');
+      if (!name) return;
+      await muteContainer(name, minutes);
+      document.getElementById('muteContainerInput').value = '';
+    }
+
+    async function refreshAll(resetCrashes = false) {
+      await Promise.all([
+        fetchStats(),
+        fetchCrashTypes(),
+        fetchTimeline(),
+        fetchContainers(),
+        fetchMutedContainers(),
+      ]);
+      await fetchCrashes(resetCrashes);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', () => refreshAll(true));
+    document.getElementById('scanNowBtn').addEventListener('click', triggerScan);
+    document.getElementById('testNotifyBtn').addEventListener('click', testNotify);
+    document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
     document.getElementById('clearFilteredBtn').addEventListener('click', clearFiltered);
+    document.getElementById('saveFilterBtn').addEventListener('click', saveFilters);
+    document.getElementById('loadFilterBtn').addEventListener('click', async () => {
+      loadFilters();
+      await refreshAll(true);
+    });
+    document.getElementById('addMuteBtn').addEventListener('click', addMuteFromInput);
 
-    document.getElementById('containerFilter').addEventListener('input', fetchCrashes);
-    document.getElementById('typeFilter').addEventListener('change', fetchCrashes);
+    document.getElementById('containerFilter').addEventListener('input', () => fetchCrashes(true));
+    document.getElementById('typeFilter').addEventListener('change', () => fetchCrashes(true));
+    elements.loadMoreBtn.addEventListener('click', () => fetchCrashes(false));
 
-    fetchStats();
-    fetchCrashes();
-    fetchCrashTypes();
-    fetchContainers();
+    loadFilters();
+    refreshAll(true);
 
     setInterval(fetchStats, 30000);
-    setInterval(fetchContainers, 15000);
-    setInterval(fetchCrashes, 30000);
     setInterval(fetchCrashTypes, 30000);
+    setInterval(fetchTimeline, 30000);
+    setInterval(fetchContainers, 15000);
+    setInterval(fetchMutedContainers, 20000);
   </script>
 </body>
 </html>

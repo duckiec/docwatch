@@ -126,7 +126,7 @@ async def api_refresh():
     return await watcher.trigger_poll_now()
 
 
-@app.get("/api/crashes/export.csv")
+@app.get("/api/export/crashes.csv")
 async def api_export_crashes_csv(limit: int = Query(default=5000, ge=1, le=20000)):
     rows = await database.get_crashes_for_export(limit=limit)
     output = io.StringIO()
