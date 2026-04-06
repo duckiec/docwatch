@@ -144,9 +144,11 @@ def test_email_smtp_exception_returns_false(monkeypatch):
 async def test_send_notifications_both_false(monkeypatch):
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("NTFY_TOPIC", raising=False)
+    monkeypatch.delenv("WEBHOOK_URL", raising=False)
 
     result = await notifier.send_notifications("subject", "body")
-    assert result == {"telegram": False, "email": False}
+    assert result == {"telegram": False, "email": False, "ntfy": False, "webhook": False}
 
 
 async def test_send_notifications_telegram_only(monkeypatch):
