@@ -4,6 +4,7 @@ import asyncio
 import csv
 import io
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
 import docker
@@ -16,7 +17,16 @@ import database
 import watcher
 from notifier import send_notifications
 
-app = FastAPI(title="DocWatch")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await database.init_db()
+    watcher.start_watcher()
+    yield
+    watcher.stop_watcher()
+
+
+app = FastAPI(title="DocWatch", lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 API_AUTH_TOKEN = os.getenv("API_AUTH_TOKEN", "").strip()
 
@@ -37,20 +47,9 @@ async def api_token_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    await database.init_db()
-    watcher.start_watcher()
-
-
-@app.on_event("shutdown")
-def on_shutdown() -> None:
-    watcher.stop_watcher()
-
-
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html", {})
 
 
 @app.get("/api/crashes")
